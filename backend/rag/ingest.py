@@ -1,11 +1,16 @@
 from pathlib import Path
-
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.document_loaders import (
     TextLoader,
     PyPDFLoader,
     UnstructuredWordDocumentLoader,
 )
+import os
+import dotenv
+from langchain_chroma import Chroma
 
+dotenv.load_dotenv()
 
 # 1、加载文件
 def load_document(file_path: str):
@@ -23,7 +28,6 @@ def load_document(file_path: str):
     return load.load()
 
 # 2、切分文件内容
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 def split_documents(documents):
     chunk = RecursiveCharacterTextSplitter(
@@ -36,7 +40,7 @@ def split_documents(documents):
     return chunk
 
 #3、Embedding向量工具
-from langchain_community.embeddings import HuggingFaceEmbeddings
+
 
 # 全局缓存，避免重复加载模型
 _embeddings_instance = None
@@ -59,12 +63,9 @@ def get_embeddings():
     return _embeddings_instance
 
 # 4保存至向量库
-import os
-import dotenv
-from langchain_chroma import Chroma
+
 
 def ingest_file(file_path:str,collection_name:str="default") ->int:
-    dotenv.load_dotenv()
     # 加载文档
     documents = load_document(file_path)
     # 第二步：给每个文档加元数据，记录来源文件名

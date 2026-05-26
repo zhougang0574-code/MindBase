@@ -12,3 +12,5 @@ pypdf
 python-docx
 python-dotenv
 langchain-text-splitters
+langchain-deepseek
+langchain-core
