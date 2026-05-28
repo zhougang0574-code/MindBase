@@ -65,11 +65,12 @@ def get_embeddings():
 # 4保存至向量库
 
 
-def ingest_file(file_path:str,collection_name:str="default") ->int:
+def ingest_file(file_path: str, collection_name: str = "default", original_filename: str = None) -> int:
     # 加载文档
     documents = load_document(file_path)
     # 第二步：给每个文档加元数据，记录来源文件名
-    file_name = Path(file_path).name  # 只取文件名，不要完整路径
+    # 用原始文件名，没有就用临时文件名
+    file_name = original_filename if original_filename else Path(file_path).name
     for doc in documents:
         # doc.metadata["source_file"] = file_name：给每个 chunk 打上来源标记，问答时可以告诉用户答案来自哪个文件。
         doc.metadata["source_file"] = file_name
