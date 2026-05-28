@@ -81,7 +81,6 @@ def ingest_file(file_path: str, collection_name: str = "default", original_filen
     # 第四步：存入向量库
     vectorstore = Chroma(
         collection_name=collection_name,
-        # os.getenv("CHROMA_PERSIST_DIR", "./chroma_db")：读取.env里配置的存储路径，如果没配置就用. / chroma_db作为默认值。
         persist_directory=os.getenv("CHROMA_PERSIST_DIR", "./chroma_db"),
         embedding_function=get_embeddings(),
     )
