@@ -7,7 +7,8 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import PromptTemplate
 from langchain_deepseek import ChatDeepSeek
 from backend.rag.ingest import get_embeddings
-
+from langchain_community.retrievers import EnsembleRetriever, BM25Retriever
+from langchain_core.documents import Document
 dotenv.load_dotenv()
 
 
@@ -49,28 +50,47 @@ def query(question: str, collection_name: str = "default", top_k: int = 5) -> di
         embedding_function=get_embeddings(),
     )
 
-    # 第二步：构建检索器
-    retriever = vectorstore.as_retriever(
+    # 第二步：从向量库取出所有文档，用于构建 BM25
+    print("📚 获取知识库文档...")
+    all_docs = vectorstore.get()
+
+    documents = [
+        Document(page_content=content, metadata=meta)
+        for content, meta in zip(all_docs['documents'], all_docs['metadatas'])
+    ]
+
+    # 第三步：构建向量检索器
+    vector_retriever = vectorstore.as_retriever(
         search_type="similarity",
         search_kwargs={"k": top_k},
     )
 
-    # 第三步：LCEL 链
-    chain = (
-        {
-            "context": retriever | format_docs,  # 检索 → 格式化成字符串
-            "question": RunnablePassthrough(),    # 问题直接透传
-        }
-        | QA_PROMPT   # 填入 Prompt 模板
-        | get_llm()   # 发给 LLM
-        | StrOutputParser()  # 把 LLM 输出解析成字符串
+    # 第四步：构建 BM25 检索器
+    bm25_retriever = BM25Retriever.from_documents(documents)
+    bm25_retriever.k = top_k  # 返回数量和向量检索一致
+
+    # 第五步：用 EnsembleRetriever 融合两路结果（RRF算法）
+    ensemble_retriever = EnsembleRetriever(
+        retrievers=[vector_retriever, bm25_retriever],
+        weights=[0.5, 0.5],  # 两路各占50%权重，可以调整
     )
 
-    # 第四步：执行查询
+    # 第六步：LCEL 链（把检索器换成混合检索器）
+    chain = (
+        {
+            "context": ensemble_retriever | format_docs,
+            "question": RunnablePassthrough(),
+        }
+        | QA_PROMPT
+        | get_llm()
+        | StrOutputParser()
+    )
+
+    # 第七步：执行查询
     answer = chain.invoke(question)
 
-    # 第五步：单独检索一次拿来源（LCEL 链不直接返回原始文档）
-    source_docs = retriever.invoke(question)
+    # 第八步：单独获取来源
+    source_docs = ensemble_retriever.invoke(question)
     sources = []
     seen = set()
     for doc in source_docs:

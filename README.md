@@ -11,3 +11,9 @@ pip install -r requirements.txt
 
 4、ingest.py
 主要功能，加载文档，文档切分，加载向量库，将文档存储至向量库
+
+后端启动命令
+    uvicorn main:app --reload
+
+前端启动命令
+    streamlit run frontend/app.py

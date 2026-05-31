@@ -9,6 +9,8 @@ from langchain_community.document_loaders import (
 import os
 import dotenv
 from langchain_chroma import Chroma
+from langchain_community.retrievers import BM25Retriever
+
 
 dotenv.load_dotenv()
 
@@ -28,16 +30,26 @@ def load_document(file_path: str):
     return load.load()
 
 # 2、切分文件内容
-
-def split_documents(documents):
-    chunk = RecursiveCharacterTextSplitter(
-        separators=['\n\n', '\n', '。', '！', '？', '……', '，', ''],
-        chunk_size=400,
-        chunk_overlap=50,
-        length_function=len,
-        add_start_index=True
-    ).split_documents(documents)
-    return chunk
+def split_documents(documents, file_size_mb: float = 0):
+    if file_size_mb < 1:
+        print("📐 使用语义切分...")
+        from langchain_experimental.text_splitter import SemanticChunker
+        splitter = SemanticChunker(
+            embeddings=get_embeddings(),
+            breakpoint_threshold_type="percentile",
+            breakpoint_threshold_amount=95,
+        )
+    else:
+        print(f"📐 文件较大（{file_size_mb:.1f}MB），使用递归字符切分...")
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
+        splitter = RecursiveCharacterTextSplitter(
+            separators=['\n\n', '\n', '。', '！', '？', '……', '，', ''],
+            chunk_size=400,
+            chunk_overlap=50,
+            length_function=len,
+            add_start_index=True
+        )
+    return splitter.split_documents(documents)
 
 #3、Embedding向量工具
 

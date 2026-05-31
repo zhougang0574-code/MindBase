@@ -14,3 +14,5 @@ python-dotenv
 langchain-text-splitters
 langchain-deepseek
 langchain-core
+langchain-experimental
+rank-bm25
